@@ -1,6 +1,7 @@
  # Logic for managing relationship states
  
-from textblob import TextBlob
+from transformers import AutoTokenizer, TFAutoModelForTokenClassification
+from transformers import pipeline
 
 class RelationshipManager:
     def __init__(self):
@@ -10,10 +11,15 @@ class RelationshipManager:
             "hostility": 0
         }
 
-        # Define AI's interests with expanded keywords
+        # Load a pre-trained model for NER
+        self.tokenizer = AutoTokenizer.from_pretrained("dbmdz/bert-large-cased-finetuned-conll03-english")
+        self.model = TFAutoModelForTokenClassification.from_pretrained("dbmdz/bert-large-cased-finetuned-conll03-english")
+        self.ner_pipeline = pipeline("ner", model=self.model, tokenizer=self.tokenizer)
+
+        # Define AI's interests with core keywords
         self.interests = {
             "movies": {
-                "keywords": ["movies", "movie", "film", "films", "cinema", "hollywood", "netflix"],  # Expanded list
+                "keywords": ["movie", "film", "cinema", "hollywood", "netflix"],  # Core keywords
                 "positive": 2,  # Trust increases by 2 for positive talk
                 "neutral": 1,   # Trust increases by 1 for neutral talk
                 "negative": -1  # Trust decreases by 1 for negative talk, hostility increases by 2
@@ -29,6 +35,11 @@ class RelationshipManager:
         else:
             return "neutral"
 
+    def recognize_entities(self, text):
+        ner_results = self.ner_pipeline(text)
+        recognized_entities = [result['word'].lower() for result in ner_results if result['entity'].startswith('B-')]
+        return recognized_entities
+
     def update(self, player_input, ai_response):
         # Analyze the sentiment of the player's input using TextBlob
         sentiment_analysis = TextBlob(player_input)
@@ -42,18 +53,23 @@ class RelationshipManager:
         else:
             sentiment = 'neutral'
         
-        # Check if the input mentions any of the AI's interests
+        # Recognize named entities in the player's input
+        recognized_entities = self.recognize_entities(player_input)
+
+        # Check if the input mentions any of the AI's interests or recognized entities
         for interest, details in self.interests.items():
-            if any(keyword in player_input.lower() for keyword in details["keywords"]):
-                # Adjust relationship states based on the sentiment and interest
-                if sentiment == 'positive':
-                    self.states["trust"] += details["positive"]
-                elif sentiment == 'negative':
-                    self.states["trust"] += details["negative"]
-                    self.states["hostility"] += 2  # Increase hostility for negative talk
-                else:
-                    self.states["trust"] += details["neutral"]
-                break  # Stop after finding the first matching interest
+            for keyword in details["keywords"]:
+                # Check for direct keyword match or recognized entities
+                if keyword in player_input.lower() or any(keyword in entity for entity in recognized_entities):
+                    # Adjust relationship states based on the sentiment and interest
+                    if sentiment == 'positive':
+                        self.states["trust"] += details["positive"]
+                    elif sentiment == 'negative':
+                        self.states["trust"] += details["negative"]
+                        self.states["hostility"] += 2  # Increase hostility for negative talk
+                    else:
+                        self.states["trust"] += details["neutral"]
+                    break  # Stop after finding the first matching interest
 
         # General sentiment-based relationship update (if no interest was matched)
         if "calm" in player_input.lower():
