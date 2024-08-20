@@ -11,9 +11,9 @@ class ScenarioGenerator:
         self.demands = ["money", "safe passage out of the country", "public statement from authorities", "specific item or information"]
 
     def generate_scenario(self):
-        location = random.choice(self.locations)
+        location = random.choice(self.location)
         motive = random.choice(self.motives)
-        hostages = random.choice(self.hostage_types)
+        hostages = random.choice(self.hostage_type)
         demand = random.choice(self.demands)
         num_hostages = random.randint(1, 20)
     
