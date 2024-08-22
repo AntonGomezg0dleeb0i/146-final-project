@@ -1,3 +1,5 @@
+#"""
+# Old code, wanted to keep just in case
 # Main Flask app to handle API requests
 from flask import Flask, request, jsonify
 from ai import AIModel
@@ -30,6 +32,24 @@ def generate_dialogue():
     
     # Return the AI response
     return jsonify({'response': response})
+
+if __name__ == '__main__':
+    app.run(host='0.0.0.0', port=5000)
+#"""
+from flask import Flask, request, jsonify
+from ai import generate_hostage_taker_response
+
+app = Flask(__name__)
+
+@app.route('/generate', methods=['POST'])
+def generate_dialogue():
+    data = request.json
+    player_input = data['input']
+    
+    # Generate the hostage taker's response
+    hostage_taker_response = generate_hostage_taker_response(player_input)
+    
+    return jsonify({'response': hostage_taker_response})
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000)
