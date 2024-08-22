@@ -3,23 +3,13 @@
 from transformers import AutoTokenizer, TFAutoModelForTokenClassification
 from transformers import pipeline
 
-import random
-
 class RelationshipManager:
     def __init__(self):
         self.states = {
             "trust": 0,
             "fear": 0,
-            "hostility": 0,
-            "empathy": 0,
+            "hostility": 0
         }
-        # alliance, authority, threat from professor paper
-        self.aat_states = {
-            "alliance": 0,
-            "authority": 0,
-            "threat": 0
-        }
-        
 
         # Load a pre-trained model for NER
         self.tokenizer = AutoTokenizer.from_pretrained("dbmdz/bert-large-cased-finetuned-conll03-english")
@@ -50,23 +40,6 @@ class RelationshipManager:
         recognized_entities = [result['word'].lower() for result in ner_results if result['entity'].startswith('B-')]
         return recognized_entities
 
-    def update_aat(self, player_input):
-        # Alliance: Building rapport and trust
-        if any(word in player_input.lower() for word in ["understand", "help", "together", "we"]):
-            self.aat_states["alliance"] += 1
-        
-        # Authority: Asserting control and setting boundaries
-        if any(word in player_input.lower() for word in ["must", "should", "law", "police"]):
-            self.aat_states["authority"] += 1
-        
-        # Threat: Highlighting negative consequences
-        if any(word in player_input.lower() for word in ["consequences", "danger", "risk", "harm"]):
-            self.aat_states["threat"] += 1
-        
-        # Ensure values stay within 0-10 range
-        for key in self.aat_states:
-            self.aat_states[key] = max(0, min(self.aat_states[key], 10))
-
     def update(self, player_input, ai_response):
         # Analyze the sentiment of the player's input using TextBlob
         sentiment_analysis = TextBlob(player_input)
@@ -80,21 +53,8 @@ class RelationshipManager:
         else:
             sentiment = 'neutral'
         
-        # Update AAT states
-        self.update_aat(player_input)
-
-        # Update emotional states based on AAT
-        self.states["trust"] += self.aat_states["alliance"] * 0.1
-        self.states["fear"] += self.aat_states["threat"] * 0.1
-        self.states["hostility"] += (self.aat_states["authority"] - self.aat_states["alliance"]) * 0.05
-        self.states["empathy"] += self.aat_states["alliance"] * 0.1
-
         # Recognize named entities in the player's input
         recognized_entities = self.recognize_entities(player_input)
-
-        # Ensure all states stay within 0-10 range
-        for key in self.states:
-            self.states[key] = max(0, min(self.states[key], 10))
 
         # Check if the input mentions any of the AI's interests or recognized entities
         for interest, details in self.interests.items():
@@ -122,22 +82,3 @@ class RelationshipManager:
             self.states["trust"] += 1
         elif sentiment == 'negative':
             self.states["hostility"] += 1
-        
-        return self.get_dominant_state()
-
-    
-    def get_dominant_state(self):
-        return max(self.states, key=self.states.get)
-
-    def get_response_tone(self):
-        dominant_state = self.get_dominant_state()
-        if dominant_state == "trust":
-            return "The hostage-taker sounds more open to negotiation."
-        elif dominant_state == "fear":
-            return "The hostage-taker sounds nervous and unpredictable."
-        elif dominant_state == "hostility":
-            return "The hostage-taker's voice is filled with anger."
-        elif dominant_state == "empathy":
-            return "The hostage-taker seems to be considering the situation from other perspectives."
-        else:
-            return "The hostage-taker's tone is neutral."
